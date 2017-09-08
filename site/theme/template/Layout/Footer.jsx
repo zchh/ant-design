@@ -1,7 +1,6 @@
 import React from 'react';
 import { FormattedMessage, injectIntl } from 'react-intl';
 import { Modal, Icon, message } from 'antd';
-import reqwest from 'reqwest';
 import { isLocalStorageNameSupported } from '../utils';
 import ColorPicker from '../Color/ColorPicker';
 
@@ -32,22 +31,15 @@ class Footer extends React.Component {
   }
 
   handleColorChange = (color) => {
+    if (!window.less) {
+      return;
+    }
     const { messages } = this.props.intl;
-    reqwest({
-      url: 'https://ant-design-theme.now.sh/compile',
-      method: 'post',
-      data: {
-        variables: {
-          '@primary-color': color,
-        },
-      },
-    }).then((data) => {
+    window.less.modifyVars({
+      '@primary-color': color,
+    }).then(() => {
       message.success(messages['app.footer.primary-color-changed']);
       this.setState({ color });
-      const head = document.querySelector('head');
-      const style = document.createElement('style');
-      style.innerText = data;
-      head.appendChild(style);
     });
   }
 

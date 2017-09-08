@@ -6,28 +6,17 @@ const glob = require('glob');
 const postcss = require('postcss');
 const less = require('less');
 
-const PLACEHOLDERS = {
-  '@primary-color': '#999999',
-  '@link-color': '#999999',
-  '@outline-color': '#999999',
-  '@btn-primary-bg': '#999999',
-  '@input-hover-border-color': '#999999',
-  '@process-default-color': '#999999',
-  '@primary-1': '#999998',
-  '@primary-2': '#999997',
-  '@primary-5': '#999996',
-  '@primary-6': '#999995',
-  '@primary-7': '#999994',
-};
-
-const COMPUTED = {
-  '@primary-5': '#b1b1b1',
-  '@primary-7': '#858585',
-  '@slider-0': '#d6d6d6',
-  '@slider-1': '#cccccc',
-  '@slider-2': 'rgba(153, 153, 153, 0.2)',
-  '@slider-3': '#c2c2c2',
-  '@start-button-color': '#40a5ed',
+const COLOR_MAP = {
+  '#ecf6fd': 'color(~`colorPalette("@{primary-color}", 1)`)', // @primary-1
+  '#d2eafb': 'color(~`colorPalette("@{primary-color}", 2)`)', // @primary-2
+  '#49a9ee': 'color(~`colorPalette("@{primary-color}", 5)`)', // @primary-5
+  '#108ee9': '@primary-color',
+  '#0e77ca': 'color(~`colorPalette("@{primary-color}", 7)`)', // @primary-7
+  '#40a5ed': 'tint(@primary-color, 20%)',
+  '#70bbf2': 'tint(@primary-color, 40%)',
+  '#88c7f4': 'tint(@primary-color, 50%)',
+  '#9fd2f6': 'tint(@primary-color, 60%)',
+  'rgba(16, 142, 233, 0.2)': 'fadeout(@primary-color, 80%)',
 };
 
 const reducePlugin = postcss.plugin('reducePlugin', () => {
@@ -66,10 +55,6 @@ async function generateCss() {
   let content = fs.readFileSync(entry).toString();
   const styles = glob.sync(path.join(antd, 'components/*/style/index.less'));
   content += '\n';
-  Object.keys(PLACEHOLDERS).forEach((key) => {
-    content += `${key}: ${PLACEHOLDERS[key]};\n`;
-  });
-  content += '\n';
   styles.forEach((style) => {
     content += `@import "${style}";\n`;
   });
@@ -84,14 +69,23 @@ async function generateCss() {
     reducePlugin,
   ]).process(result, { parser: less.parser, from: entry })).css;
 
-  Object.keys(PLACEHOLDERS).forEach((key) => {
-    result = result.replace(new RegExp(PLACEHOLDERS[key], 'g'), key);
-  });
-  Object.keys(COMPUTED).forEach((key) => {
-    result = result.replace(new RegExp(COMPUTED[key], 'g'), key);
+  Object.keys(COLOR_MAP).forEach((key) => {
+    result = result.replace(new RegExp(key, 'g'), COLOR_MAP[key]);
   });
 
-  fs.writeFileSync(path.resolve(__dirname, '../_site/theme.less'), result);
+  const bezierEasing = fs.readFileSync(path.join(antd, 'components/style/color/bezierEasing.less')).toString();
+  const tinyColor = fs.readFileSync(path.join(antd, 'components/style/color/tinyColor.less')).toString();
+  const colorPalette = fs.readFileSync(path.join(antd, 'components/style/color/colorPalette.less'))
+    .toString()
+    .replace('@import "bezierEasing";', '')
+    .replace('@import "tinyColor";', '');
+
+  result = `${colorPalette}\n${result}`;
+  result = `${tinyColor}\n${result}`;
+  result = `${bezierEasing}\n${result}`;
+  result = `@primary-color: #108ee9;\n${result}`;
+
+  fs.writeFileSync(path.resolve(__dirname, '../_site/color.less'), result);
 }
 
 generateCss();
